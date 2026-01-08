@@ -100,3 +100,40 @@ export const getEndOfDay = (date) => {
   return d;
 };
 
+/**
+ * Formate une heure au format HH:MM pour les inputs time
+ * @param {Date|string} date - Date avec heure
+ * @returns {string} Heure formatée (HH:MM)
+ */
+export const formatTimeForInput = (date) => {
+  if (!date) return '';
+  const d = new Date(date);
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+};
+
+/**
+ * Combine une date et une heure en un objet Date
+ * @param {string} dateStr - Date au format YYYY-MM-DD
+ * @param {string} timeStr - Heure au format HH:MM
+ * @returns {Date|null} Date combinée ou null si dateStr est vide
+ */
+export const combineDateAndTime = (dateStr, timeStr) => {
+  if (!dateStr) return null;
+  if (!timeStr) return new Date(dateStr);
+  
+  const [hours, minutes] = timeStr.split(':').map(Number);
+  const date = new Date(dateStr);
+  date.setHours(hours || 0, minutes || 0, 0, 0);
+  return date;
+};
+
+/**
+ * Obtient la date d'aujourd'hui au format YYYY-MM-DD
+ * @returns {string} Date d'aujourd'hui
+ */
+export const getTodayDate = () => {
+  return formatDateForInput(new Date());
+};
+

@@ -17,9 +17,11 @@ const AppContent = () => {
 
   /**
    * Gère le clic sur une date du calendrier
+   * @param {Date} date - Date/heure du clic (peut contenir l'heure si clic dans timeGrid)
    */
   const handleDateClick = (date) => {
-    setSelectedDate(date);
+    // Toujours stocker comme Date pour préserver l'heure si présente
+    setSelectedDate(date instanceof Date ? date : new Date(date));
     setSelectedTask(null);
     setShowTaskForm(true);
   };
@@ -61,7 +63,10 @@ const AppContent = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+    <div className="min-h-screen animated-background transition-colors duration-200 relative">
+      {/* Overlay pour assurer la lisibilité */}
+      <div className="absolute inset-0 bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-sm"></div>
+      <div className="relative z-10">
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -171,9 +176,11 @@ const AppContent = () => {
         <TaskForm
           task={selectedTask}
           initialDate={selectedDate ? formatDateForInput(selectedDate) : null}
+          initialDateTime={selectedDate instanceof Date ? selectedDate : null}
           onClose={handleCloseForm}
         />
       )}
+      </div>
     </div>
   );
 };

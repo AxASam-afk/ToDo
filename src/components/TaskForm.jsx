@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTaskContext } from '../context/TaskContext';
-import { formatDateForInput } from '../utils/dateHelpers';
+import { formatDateForInput, formatTimeForInput, combineDateAndTime, getTodayDate } from '../utils/dateHelpers';
 
 /**
  * Composant formulaire pour ajouter ou modifier une tâche
@@ -8,15 +8,18 @@ import { formatDateForInput } from '../utils/dateHelpers';
  * @param {Object|null} props.task - Tâche à modifier (null pour création)
  * @param {Function} props.onClose - Fonction appelée à la fermeture
  * @param {string|null} props.initialDate - Date initiale pour la création (format YYYY-MM-DD)
+ * @param {Date|null} props.initialDateTime - Date/heure initiale pour la création (avec heure)
  */
-const TaskForm = ({ task = null, onClose, initialDate = null }) => {
+const TaskForm = ({ task = null, onClose, initialDate = null, initialDateTime = null }) => {
   const { addTask, updateTask } = useTaskContext();
   
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    startDate: '',
+    startDate: getTodayDate(), // Date par défaut = aujourd'hui
     endDate: '',
+    startTime: '',
+    endTime: '',
     priority: 'medium',
   });
 
@@ -25,20 +28,38 @@ const TaskForm = ({ task = null, onClose, initialDate = null }) => {
   // Charger les données de la tâche si en mode édition, ou utiliser initialDate pour création
   useEffect(() => {
     if (task) {
+      // Extraire la date et l'heure si elles existent
+      const startDateTime = task.startDateTime ? new Date(task.startDateTime) : null;
+      const endDateTime = task.endDateTime ? new Date(task.endDateTime) : null;
+      
       setFormData({
         title: task.title || '',
         description: task.description || '',
-        startDate: task.startDate ? formatDateForInput(task.startDate) : '',
-        endDate: task.endDate ? formatDateForInput(task.endDate) : '',
+        startDate: task.startDate ? formatDateForInput(task.startDate) : (startDateTime ? formatDateForInput(startDateTime) : getTodayDate()),
+        endDate: task.endDate ? formatDateForInput(task.endDate) : (endDateTime ? formatDateForInput(endDateTime) : ''),
+        startTime: startDateTime ? formatTimeForInput(startDateTime) : '',
+        endTime: endDateTime ? formatTimeForInput(endDateTime) : '',
         priority: task.priority || 'medium',
       });
+    } else if (initialDateTime) {
+      // Si une date/heure est fournie (clic dans timeGrid), pré-remplir date et heure
+      setFormData({
+        title: '',
+        description: '',
+        startDate: formatDateForInput(initialDateTime),
+        endDate: '',
+        startTime: formatTimeForInput(initialDateTime),
+        endTime: '',
+        priority: 'medium',
+      });
     } else if (initialDate) {
+      // Si seulement une date est fournie (clic dans dayGrid), pré-remplir seulement la date
       setFormData((prev) => ({
         ...prev,
         startDate: initialDate,
       }));
     }
-  }, [task, initialDate]);
+  }, [task, initialDate, initialDateTime]);
 
   /**
    * Gère les changements dans les champs du formulaire
@@ -68,11 +89,21 @@ const TaskForm = ({ task = null, onClose, initialDate = null }) => {
       newErrors.title = 'Le titre est obligatoire';
     }
 
+    // Validation des dates
     if (formData.startDate && formData.endDate) {
-      const start = new Date(formData.startDate);
-      const end = new Date(formData.endDate);
+      const start = combineDateAndTime(formData.startDate, formData.startTime) || new Date(formData.startDate);
+      const end = combineDateAndTime(formData.endDate, formData.endTime) || new Date(formData.endDate);
       if (end < start) {
-        newErrors.endDate = 'La date de fin doit être après la date de début';
+        newErrors.endDate = 'La date/heure de fin doit être après la date/heure de début';
+      }
+    }
+
+    // Validation des heures si les deux sont renseignées
+    if (formData.startTime && formData.endTime && formData.startDate === formData.endDate) {
+      const [startH, startM] = formData.startTime.split(':').map(Number);
+      const [endH, endM] = formData.endTime.split(':').map(Number);
+      if (endH < startH || (endH === startH && endM <= startM)) {
+        newErrors.endTime = "L'heure de fin doit être après l'heure de début";
       }
     }
 
@@ -90,11 +121,24 @@ const TaskForm = ({ task = null, onClose, initialDate = null }) => {
       return;
     }
 
+    // Combiner dates et heures si les heures sont renseignées
+    const startDateTime = formData.startTime && formData.startDate 
+      ? combineDateAndTime(formData.startDate, formData.startTime)
+      : null;
+    
+    const endDateTime = formData.endTime && formData.endDate
+      ? combineDateAndTime(formData.endDate, formData.endTime)
+      : null;
+
     const taskData = {
       title: formData.title.trim(),
       description: formData.description.trim(),
       startDate: formData.startDate || null,
       endDate: formData.endDate || null,
+      startTime: formData.startTime || null,
+      endTime: formData.endTime || null,
+      startDateTime: startDateTime ? startDateTime.toISOString() : null,
+      endDateTime: endDateTime ? endDateTime.toISOString() : null,
       priority: formData.priority,
     };
 
@@ -217,6 +261,51 @@ const TaskForm = ({ task = null, onClose, initialDate = null }) => {
             {errors.endDate && (
               <p className="mt-1 text-sm text-red-500">{errors.endDate}</p>
             )}
+          </div>
+
+          {/* Heure de début */}
+          <div>
+            <label
+              htmlFor="startTime"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
+              Heure de début <span className="text-xs text-gray-500">(optionnel)</span>
+            </label>
+            <input
+              type="time"
+              id="startTime"
+              name="startTime"
+              value={formData.startTime}
+              onChange={handleChange}
+              className="input-field"
+            />
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Si vide, la tâche sera sur toute la journée
+            </p>
+          </div>
+
+          {/* Heure de fin */}
+          <div>
+            <label
+              htmlFor="endTime"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+            >
+              Heure de fin <span className="text-xs text-gray-500">(optionnel)</span>
+            </label>
+            <input
+              type="time"
+              id="endTime"
+              name="endTime"
+              value={formData.endTime}
+              onChange={handleChange}
+              className={`input-field ${errors.endTime ? 'border-red-500' : ''}`}
+            />
+            {errors.endTime && (
+              <p className="mt-1 text-sm text-red-500">{errors.endTime}</p>
+            )}
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Si vide, la tâche sera sur toute la journée
+            </p>
           </div>
 
           {/* Priorité */}

@@ -64,3 +64,39 @@
   @apply opacity-90 transform scale-105;
 }
 
+/* Fond animé discret */
+@keyframes gradient-shift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.animated-background {
+  background: linear-gradient(
+    -45deg,
+    #f0f9ff 0%,
+    #e0f2fe 25%,
+    #f0f9ff 50%,
+    #e0f2fe 75%,
+    #f0f9ff 100%
+  );
+  background-size: 400% 400%;
+  animation: gradient-shift 20s ease infinite;
+}
+
+.dark .animated-background {
+  background: linear-gradient(
+    -45deg,
+    #0f172a 0%,
+    #1e293b 25%,
+    #0f172a 50%,
+    #1e293b 75%,
+    #0f172a 100%
+  );
+  background-size: 400% 400%;
+  animation: gradient-shift 20s ease infinite;
+}
+
