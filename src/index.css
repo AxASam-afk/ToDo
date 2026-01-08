@@ -4,7 +4,8 @@
 
 @layer base {
   body {
-    @apply bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200;
+    @apply text-gray-900 dark:text-gray-100 transition-colors duration-200;
+    /* Le fond est géré par animated-background dans App.jsx */
   }
 }
 
@@ -64,7 +65,7 @@
   @apply opacity-90 transform scale-105;
 }
 
-/* Fond animé discret */
+/* Fond animé discret - Style Notion/Linear */
 @keyframes gradient-shift {
   0%, 100% {
     background-position: 0% 50%;
@@ -75,28 +76,30 @@
 }
 
 .animated-background {
+  /* Dégradé très subtil : gris clair avec une pointe de bleu doux */
   background: linear-gradient(
-    -45deg,
-    #f0f9ff 0%,
-    #e0f2fe 25%,
-    #f0f9ff 50%,
-    #e0f2fe 75%,
-    #f0f9ff 100%
+    135deg,
+    #f8fafc 0%,
+    #f1f5f9 25%,
+    #f8fafc 50%,
+    #f1f5f9 75%,
+    #f8fafc 100%
   );
-  background-size: 400% 400%;
-  animation: gradient-shift 20s ease infinite;
+  background-size: 200% 200%;
+  animation: gradient-shift 30s ease infinite;
 }
 
 .dark .animated-background {
+  /* Dégradé subtil pour dark mode : slate foncé avec nuance bleue */
   background: linear-gradient(
-    -45deg,
+    135deg,
     #0f172a 0%,
     #1e293b 25%,
     #0f172a 50%,
     #1e293b 75%,
     #0f172a 100%
   );
-  background-size: 400% 400%;
-  animation: gradient-shift 20s ease infinite;
+  background-size: 200% 200%;
+  animation: gradient-shift 30s ease infinite;
 }
 

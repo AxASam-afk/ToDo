@@ -63,10 +63,7 @@ const AppContent = () => {
   };
 
   return (
-    <div className="min-h-screen animated-background transition-colors duration-200 relative">
-      {/* Overlay pour assurer la lisibilité */}
-      <div className="absolute inset-0 bg-gray-50/80 dark:bg-gray-900/80 backdrop-blur-sm"></div>
-      <div className="relative z-10">
+    <div className="min-h-screen animated-background transition-colors duration-200">
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -180,7 +177,6 @@ const AppContent = () => {
           onClose={handleCloseForm}
         />
       )}
-      </div>
     </div>
   );
 };
