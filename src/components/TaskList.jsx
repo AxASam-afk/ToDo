@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useTaskContext } from '../context/TaskContext';
 import { formatDateDisplay, isPast } from '../utils/dateHelpers';
+import { getDefaultColorByPriority, getColorById } from '../utils/colors';
 import TaskForm from './TaskForm';
 
 /**
@@ -196,8 +197,19 @@ const TaskList = ({ onTaskClick }) => {
                     </div>
                   )}
 
-                  {/* Badge priorité */}
-                  <div className="mt-2">
+                  {/* Badge priorité et couleur */}
+                  <div className="mt-2 flex items-center gap-2 flex-wrap">
+                    {/* Indicateur de couleur */}
+                    <div
+                      className="w-4 h-4 rounded-full border border-gray-300 dark:border-gray-600"
+                      style={{
+                        backgroundColor: task.color
+                          ? getColorById(task.color)
+                          : getDefaultColorByPriority(task.priority),
+                      }}
+                      title={`Couleur: ${task.color || 'par défaut'}`}
+                    />
+                    {/* Badge priorité */}
                     <span
                       className={`inline-block px-2 py-1 rounded text-xs font-medium border ${getPriorityColor(
                         task.priority
@@ -209,6 +221,12 @@ const TaskList = ({ onTaskClick }) => {
                         ? 'Moyenne'
                         : 'Basse'}
                     </span>
+                    {/* Badge récurrence */}
+                    {task.recurrenceType && task.recurrenceType !== 'none' && (
+                      <span className="inline-block px-2 py-1 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 border border-blue-300 dark:border-blue-700">
+                        🔁 {task.recurrenceType === 'daily' ? 'Quotidien' : task.recurrenceType === 'weekly' ? 'Hebdomadaire' : 'Mensuel'}
+                      </span>
+                    )}
                   </div>
                 </div>
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTaskContext } from '../context/TaskContext';
 import { formatDateForInput, formatTimeForInput, combineDateAndTime, getTodayDate } from '../utils/dateHelpers';
+import { TASK_COLORS, getDefaultColorByPriority, getColorById } from '../utils/colors';
 
 /**
  * Composant formulaire pour ajouter ou modifier une tâche
@@ -21,6 +22,10 @@ const TaskForm = ({ task = null, onClose, initialDate = null, initialDateTime = 
     startTime: '',
     endTime: '',
     priority: 'medium',
+    color: null, // null = utiliser la couleur par défaut selon la priorité
+    recurrenceType: 'none', // none, daily, weekly, monthly
+    recurrenceInterval: 1, // Intervalle (ex: toutes les 2 semaines = 2)
+    recurrenceEndDate: '', // Date de fin de récurrence (optionnelle)
   });
 
   const [errors, setErrors] = useState({});
@@ -40,6 +45,10 @@ const TaskForm = ({ task = null, onClose, initialDate = null, initialDateTime = 
         startTime: startDateTime ? formatTimeForInput(startDateTime) : '',
         endTime: endDateTime ? formatTimeForInput(endDateTime) : '',
         priority: task.priority || 'medium',
+        color: task.color || null,
+        recurrenceType: task.recurrenceType || 'none',
+        recurrenceInterval: task.recurrenceInterval || 1,
+        recurrenceEndDate: task.recurrenceEndDate ? formatDateForInput(task.recurrenceEndDate) : '',
       });
     } else if (initialDateTime) {
       // Si une date/heure est fournie (clic dans timeGrid), pré-remplir date et heure
@@ -130,6 +139,22 @@ const TaskForm = ({ task = null, onClose, initialDate = null, initialDateTime = 
       ? combineDateAndTime(formData.endDate, formData.endTime)
       : null;
 
+    // Construire la règle de récurrence si nécessaire
+    let rrule = null;
+    if (formData.recurrenceType !== 'none') {
+      const freq = formData.recurrenceType.toUpperCase(); // DAILY, WEEKLY, MONTHLY
+      const interval = formData.recurrenceInterval || 1;
+      let rruleStr = `FREQ=${freq};INTERVAL=${interval}`;
+      
+      if (formData.recurrenceEndDate) {
+        const endDate = new Date(formData.recurrenceEndDate);
+        endDate.setHours(23, 59, 59, 999);
+        rruleStr += `;UNTIL=${endDate.toISOString().replace(/[-:]/g, '').split('.')[0]}Z`;
+      }
+      
+      rrule = rruleStr;
+    }
+
     const taskData = {
       title: formData.title.trim(),
       description: formData.description.trim(),
@@ -140,6 +165,11 @@ const TaskForm = ({ task = null, onClose, initialDate = null, initialDateTime = 
       startDateTime: startDateTime ? startDateTime.toISOString() : null,
       endDateTime: endDateTime ? endDateTime.toISOString() : null,
       priority: formData.priority,
+      color: formData.color || null,
+      recurrenceType: formData.recurrenceType !== 'none' ? formData.recurrenceType : null,
+      recurrenceInterval: formData.recurrenceType !== 'none' ? formData.recurrenceInterval : null,
+      recurrenceEndDate: formData.recurrenceEndDate || null,
+      rrule: rrule,
     };
 
     if (task) {
@@ -327,6 +357,121 @@ const TaskForm = ({ task = null, onClose, initialDate = null, initialDateTime = 
               <option value="medium">Moyenne</option>
               <option value="high">Haute</option>
             </select>
+          </div>
+
+          {/* Couleur */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Couleur <span className="text-xs text-gray-500">(optionnel)</span>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setFormData(prev => ({ ...prev, color: null }))}
+                className={`w-10 h-10 rounded-lg border-2 transition-all ${
+                  formData.color === null
+                    ? 'border-gray-900 dark:border-gray-100 ring-2 ring-offset-2 ring-primary-500'
+                    : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500'
+                }`}
+                style={{
+                  background: `linear-gradient(135deg, ${getDefaultColorByPriority(formData.priority)} 0%, ${getDefaultColorByPriority(formData.priority)} 100%)`,
+                }}
+                title="Couleur par défaut (selon priorité)"
+              />
+              {TASK_COLORS.map((color) => (
+                <button
+                  key={color.id}
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, color: color.id }))}
+                  className={`w-10 h-10 rounded-lg border-2 transition-all ${
+                    formData.color === color.id
+                      ? 'border-gray-900 dark:border-gray-100 ring-2 ring-offset-2 ring-primary-500 scale-110'
+                      : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 hover:scale-105'
+                  }`}
+                  style={{ backgroundColor: color.value }}
+                  title={color.name}
+                />
+              ))}
+            </div>
+            <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+              Si non sélectionnée, la couleur sera déterminée par la priorité
+            </p>
+          </div>
+
+          {/* Récurrence */}
+          <div className="space-y-3 pt-2 border-t border-gray-200 dark:border-gray-700">
+            <div>
+              <label
+                htmlFor="recurrenceType"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+              >
+                Récurrence
+              </label>
+              <select
+                id="recurrenceType"
+                name="recurrenceType"
+                value={formData.recurrenceType}
+                onChange={handleChange}
+                className="input-field"
+              >
+                <option value="none">Aucune récurrence</option>
+                <option value="daily">Quotidienne</option>
+                <option value="weekly">Hebdomadaire</option>
+                <option value="monthly">Mensuelle</option>
+              </select>
+            </div>
+
+            {formData.recurrenceType !== 'none' && (
+              <>
+                <div>
+                  <label
+                    htmlFor="recurrenceInterval"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  >
+                    Intervalle
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Toutes les</span>
+                    <input
+                      type="number"
+                      id="recurrenceInterval"
+                      name="recurrenceInterval"
+                      value={formData.recurrenceInterval}
+                      onChange={handleChange}
+                      min="1"
+                      max="365"
+                      className="input-field w-20"
+                    />
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      {formData.recurrenceType === 'daily' && 'jour(s)'}
+                      {formData.recurrenceType === 'weekly' && 'semaine(s)'}
+                      {formData.recurrenceType === 'monthly' && 'mois'}
+                    </span>
+                  </div>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="recurrenceEndDate"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  >
+                    Date de fin de récurrence <span className="text-xs text-gray-500">(optionnel)</span>
+                  </label>
+                  <input
+                    type="date"
+                    id="recurrenceEndDate"
+                    name="recurrenceEndDate"
+                    value={formData.recurrenceEndDate}
+                    onChange={handleChange}
+                    min={formData.startDate}
+                    className="input-field"
+                  />
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    Si vide, la récurrence continuera indéfiniment
+                  </p>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Boutons */}

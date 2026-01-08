@@ -5,6 +5,8 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import frLocale from '@fullcalendar/core/locales/fr';
 import { useTaskContext } from '../context/TaskContext';
+import { getDefaultColorByPriority, getColorById } from '../utils/colors';
+import { generateRecurringEvents } from '../utils/recurrence';
 
 /**
  * Composant calendrier utilisant FullCalendar
@@ -20,17 +22,14 @@ const Calendar = ({ onDateClick, onEventClick }) => {
    * Convertit les tâches en événements FullCalendar
    */
   const events = tasks.map((task) => {
-    // Déterminer la couleur selon la priorité
-    let color = '#3b82f6'; // bleu par défaut (medium)
-    if (task.priority === 'high') {
-      color = '#ef4444'; // rouge
-    } else if (task.priority === 'low') {
-      color = '#10b981'; // vert
-    }
-
-    // Si la tâche est complétée, utiliser une couleur grisée
+    // Déterminer la couleur : personnalisée > priorité > gris si complétée
+    let color;
     if (task.completed) {
-      color = '#9ca3af'; // gris
+      color = '#9ca3af'; // gris pour les tâches complétées
+    } else if (task.color) {
+      color = getColorById(task.color); // couleur personnalisée
+    } else {
+      color = getDefaultColorByPriority(task.priority); // couleur par défaut selon priorité
     }
 
     // Déterminer si la tâche a des heures (timed event) ou est all-day
@@ -89,7 +88,7 @@ const Calendar = ({ onDateClick, onEventClick }) => {
       }
     }
 
-    return {
+    const baseEvent = {
       id: task.id,
       title: task.title,
       start: start,
@@ -105,7 +104,14 @@ const Calendar = ({ onDateClick, onEventClick }) => {
         task: task,
       },
     };
-  });
+
+    // Générer les occurrences si la tâche est récurrente
+    if (task.recurrenceType && task.recurrenceType !== 'none') {
+      return generateRecurringEvents(task, baseEvent, 100);
+    }
+
+    return baseEvent;
+  }).flat(); // Aplatir le tableau car generateRecurringEvents retourne un tableau
 
   /**
    * Gère le clic sur une date
@@ -127,7 +133,9 @@ const Calendar = ({ onDateClick, onEventClick }) => {
    */
   const handleEventClick = (arg) => {
     if (onEventClick) {
-      onEventClick(arg.event.extendedProps.task);
+      // Toujours passer la tâche principale, même si c'est une occurrence récurrente
+      const extendedProps = arg.event.extendedProps;
+      onEventClick(extendedProps.task);
     }
   };
 
@@ -135,7 +143,35 @@ const Calendar = ({ onDateClick, onEventClick }) => {
    * Gère le changement de date/heure d'un événement (drag & drop)
    */
   const handleEventDrop = (arg) => {
-    const task = arg.event.extendedProps.task;
+    const extendedProps = arg.event.extendedProps;
+    const task = extendedProps.task;
+    
+    // Si c'est une occurrence récurrente, on ne modifie que cette occurrence
+    // Pour l'instant, on modifie la tâche principale (à améliorer pour gérer les exceptions)
+    if (extendedProps.isRecurrence) {
+      // Pour les tâches récurrentes, on pourrait créer une exception
+      // Pour simplifier, on met à jour la date de début de la série
+      const newStart = arg.event.start;
+      const newEnd = arg.event.end || newStart;
+      const isAllDay = arg.event.allDay;
+
+      if (isAllDay) {
+        updateTask(task.id, {
+          startDate: newStart.toISOString().split('T')[0],
+        });
+      } else {
+        const startDate = newStart.toISOString().split('T')[0];
+        const startTime = `${String(newStart.getHours()).padStart(2, '0')}:${String(newStart.getMinutes()).padStart(2, '0')}`;
+        updateTask(task.id, {
+          startDate: startDate,
+          startTime: startTime,
+          startDateTime: newStart.toISOString(),
+        });
+      }
+      return;
+    }
+
+    // Tâche normale (non récurrente)
     const newStart = arg.event.start;
     const newEnd = arg.event.end || newStart;
     const isAllDay = arg.event.allDay;
